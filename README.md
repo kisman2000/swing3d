@@ -11,5 +11,4 @@
 
  - draw pyramid
  - draw sphere
- - draw sides
  - rotate camera

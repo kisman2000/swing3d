@@ -31,9 +31,10 @@ var prevMouse = vec2(-1, -1)
 var deltaMouse = vec2(-1, -1)
 
 val lines = mutableListOf<Line>()
+val polygons = mutableListOf<Polygon>()
 
 fun render() {
-    cube(vec3(0, 0, 2), 1, null, Color.BLACK)
+    cube(vec3(0, 0, 2), 1, Color.RED, Color.BLACK)
 }
 
 fun key(
@@ -72,6 +73,26 @@ fun main(
             graphics : Graphics
         ) {
             super.paintComponent(graphics)
+
+            for(polygon in polygons) {
+                val x = IntArray(polygon.points.size)
+                val y = IntArray(polygon.points.size)
+
+                for((index, point) in polygon.points.withIndex()) {
+                    point.refresh()
+
+                    x[index] = point.position2d.x.toInt()
+                    y[index] = point.position2d.y.toInt()
+                }
+
+                graphics.color = polygon.color
+
+                graphics.fillPolygon(
+                    x,
+                    y,
+                    polygon.points.size
+                )
+            }
 
             for(line in lines) {
                 line.start.refresh()
@@ -148,7 +169,21 @@ fun line(
     end,
     color ?: Color.BLACK
 ).also {
-    lines.add(it)
+    if(color != null) {
+        lines.add(it)
+    }
+}
+
+fun polygon(
+    color : Color?,
+    vararg points : Point
+) = Polygon(
+    points.toList(),
+    color ?: Color.WHITE
+).also {
+    if(color != null) {
+        polygons.add(it)
+    }
 }
 
 fun cube(
@@ -263,6 +298,13 @@ class Box(
         val line10 = line(point2, point6, outline)
         val line11 = line(point3, point7, outline)
         val line12 = line(point4, point8, outline)
+
+        val polygon1 = polygon(fill, point1, point2, point3, point4)
+        val polygon2 = polygon(fill, point5, point6, point7, point8)
+        val polygon3 = polygon(fill, point1, point2, point6, point5)
+        val polygon4 = polygon(fill, point3, point4, point8, point7)
+        val polygon5 = polygon(fill, point1, point4, point8, point5)
+        val polygon6 = polygon(fill, point2, point3, point7, point6)
     }
 }
 
@@ -287,4 +329,13 @@ class Line(
     val start : Point,
     val end : Point,
     val color : Color
-)
+) {
+    override fun toString() = "Line[$start;$end]"
+}
+
+class Polygon(
+    val points : List<Point>,
+    val color : Color
+) {
+    override fun toString() = "Polygon[${points.joinToString(";") { it.toString() }}]"
+}
