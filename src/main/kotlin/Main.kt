@@ -1,10 +1,11 @@
 import java.awt.Color
 import java.awt.Graphics
-import java.awt.event.KeyAdapter
-import java.awt.event.KeyEvent
+import java.awt.event.*
 import javax.swing.JFrame
 import javax.swing.JPanel
 import kotlin.math.*
+
+const val RAD = 0.017453292
 
 const val WIDTH = 1000
 const val HEIGHT = 1000
@@ -23,7 +24,8 @@ val center = vec2(0.5, 0.5)
 val aspect = vec3(4, 4, 8)
 val camera = Camera(vec3(0, 0, 0), rotation(0, 0))
 
-val movementSpeed = vec3(5, 5, 5)
+val movementSpeed = vec3(1, 1, 1)
+val movementInput = MovementInput(1.0, 1.0)
 
 const val sensitivity = 0.5
 
@@ -35,19 +37,72 @@ val polygons = mutableListOf<Polygon>()
 
 fun render() {
     cube(vec3(0, 0, 2), 1, Color.RED, Color.BLACK)
+    cube(vec3(3, 0, 3), 2, null, Color.BLUE)
+
+    Box(
+        vec3(5, 0, 0),
+        vec3(-5, 0, 0),
+        null,
+        Color.BLACK
+    )
+
+    Box(
+        vec3(0, 5, 0),
+        vec3(0, -5, 0),
+        null,
+        Color.BLACK
+    )
+
+    Box(
+        vec3(0, 0, 5),
+        vec3(0, 0, -5),
+        null,
+        Color.BLACK
+    )
+
+    cube(vec3(8 + 3, 8, 8 + 3), 1, Color.GREEN, Color.BLACK)
+    cube(vec3(8, 8, 8), 1, Color.GREEN, Color.BLACK)
+    cube(vec3(8 - 3, 8, 8), 1, Color.GREEN, Color.BLACK)
+    cube(vec3(8, 8, 8 - 3), 1, Color.GREEN, Color.BLACK)
 }
 
 fun key(
     event : KeyEvent
 ) {
     when(event.keyCode) {
-        KEY_W -> camera.position.z += movementSpeed.z
-        KEY_A -> camera.position.x -= movementSpeed.x
-        KEY_S -> camera.position.z -= movementSpeed.z
-        KEY_D -> camera.position.x += movementSpeed.x
+        KEY_W -> {
+            val forward = (complex(0, 1) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.forward
+
+            camera.position.xz += forward
+        }
+        KEY_A -> {
+            val strafing = (complex(-1, 0) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.strafing
+
+            camera.position.xz += strafing
+        }
+        KEY_S -> {
+            val forward = (complex(0, -1) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.forward
+
+            camera.position.xz += forward
+        }
+        KEY_D -> {
+            val strafing = (complex(1, 0) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.strafing
+
+            camera.position.xz += strafing
+        }
         KEY_SPACE -> camera.position.y -= movementSpeed.y
         KEY_LSHIFT -> camera.position.y += movementSpeed.y
     }
+}
+
+fun mouse(
+    event : MouseEvent
+) {
+    deltaMouse = vec2(event.x - prevMouse.x, event.y - prevMouse.y)
+    prevMouse = vec2(event.x, event.y)
+
+    camera.rotation.yaw += deltaMouse.x * sensitivity
+    camera.rotation.pitch -= deltaMouse.y * sensitivity
 }
 
 fun main(
@@ -59,6 +114,16 @@ fun main(
         it.title = "Swing3d"
         it.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
         it.isVisible = true
+        it.addMouseListener(object : MouseAdapter() {
+
+        })
+        it.addMouseMotionListener(object : MouseMotionAdapter() {
+            override fun mouseDragged(
+                e : MouseEvent
+            ) {
+                mouse(e)
+            }
+        })
         it.addKeyListener(object : KeyAdapter() {
             override fun keyPressed(
                 e : KeyEvent
@@ -73,6 +138,9 @@ fun main(
             graphics : Graphics
         ) {
             super.paintComponent(graphics)
+
+            graphics.color = Color.BLACK
+            graphics.drawString(camera.position.toString(), 5, 10)
 
             for(polygon in polygons) {
                 val x = IntArray(polygon.points.size)
@@ -134,6 +202,32 @@ fun project(
     return vec2(x, y)
 }
 
+fun rotate(
+    position : Vec2,
+    degree : Double,
+    center : Vec2
+) : Vec2 {
+    val vector = position - center
+    val length = vector.length()
+    val complex = vector.complex() * complex(cos(RAD * degree), sin(RAD * degree))
+    val rotated = complex.vector().norm() * length
+
+    return rotated + center
+}
+
+fun rotate(
+    position : Vec3
+) : Vec3 {
+    val rotateY = rotate(position.xz, camera.rotation.yaw, camera.position.xz)
+    val rotateX = rotate(vec2(position.y, rotateY.y), camera.rotation.pitch, camera.position.yz)
+
+    return vec3(
+        rotateY.x,
+        rotateX.x,
+        rotateY.y
+    )
+}
+
 fun vec3(
     x : Number,
     y : Number,
@@ -156,8 +250,8 @@ fun rotation(
     yaw : Number,
     pitch : Number
 ) = Rotation(
-    yaw.toFloat(),
-    pitch.toFloat()
+    yaw.toDouble(),
+    pitch.toDouble()
 )
 
 fun line(
@@ -206,11 +300,29 @@ fun cube(
     outline
 )
 
+fun complex(
+    real : Number,
+    imag : Number
+) = Complex(
+    real.toDouble(),
+    imag.toDouble()
+)
+
 class Vec3(
     var x : Double,
     var y : Double,
     var z : Double
 ) {
+    val xx get() = Vec2(x, x)
+    var xy get() = Vec2(x, y) ; set(vector) { x = vector.x ; y = vector.y }
+    var xz get() = Vec2(x, z) ; set(vector) { x = vector.x ; z = vector.y }
+    var yx get() = Vec2(y, x) ; set(vector) { y = vector.x ; x = vector.y }
+    val yy get() = Vec2(y, y)
+    var yz get() = Vec2(y, z) ; set(vector) { y = vector.x ; z = vector.y }
+    var zx get() = Vec2(z, x) ; set(vector) { z = vector.x ; x = vector.y }
+    var zy get() = Vec2(z, y) ; set(vector) { z = vector.x ; y = vector.y }
+    val zz get() = Vec2(z, z)
+
     fun length() = sqrt(x * x + y * y + z * z)
 
     fun norm() : Vec3 {
@@ -238,6 +350,8 @@ class Vec2(
     var x : Double,
     var y : Double
 ) {
+    fun complex() = Complex(x, y)
+
     fun length() = sqrt(x * x + y * y)
 
     fun norm() : Vec2 {
@@ -246,16 +360,33 @@ class Vec2(
         return Vec2(x / length, y / length)
     }
 
-    fun mult(
+    operator fun plus(
+        vector : Vec2
+    ) = Vec2(
+        x + vector.x,
+        y + vector.y
+    )
+
+    operator fun minus(
+        vector : Vec2
+    ) = Vec2(
+        x - vector.x,
+        y - vector.y
+    )
+
+    operator fun times(
         multiplier : Number
-    ) = Vec2(x * multiplier.toDouble(), y * multiplier.toDouble())
+    ) = Vec2(
+        x * multiplier.toDouble(),
+        y * multiplier.toDouble()
+    )
 
     override fun toString() = "Vec2[$x;$y]"
 }
 
 class Rotation(
-    var yaw : Float,
-    var pitch : Float
+    var yaw : Double,
+    var pitch : Double
 )
 
 class Camera(
@@ -310,10 +441,10 @@ class Box(
 
 class Point(
     var position3d : Vec3,
-    var position2d : Vec2 = modify(project(position3d))
+    var position2d : Vec2 = modify(project(rotate(position3d)))
 ) {
     fun refresh() {
-        position2d = modify(project(position3d))
+        position2d = modify(project(rotate(position3d)))
     }
 
     operator fun plus(
@@ -339,3 +470,22 @@ class Polygon(
 ) {
     override fun toString() = "Polygon[${points.joinToString(";") { it.toString() }}]"
 }
+
+class Complex(
+    var real : Double,
+    var imag : Double
+) {
+    fun vector() = Vec2(real, imag)
+
+    operator fun times(
+        complex : Complex
+    ) = Complex(
+        real * complex.real - imag * complex.imag,
+        imag * complex.real + real * complex.imag
+    )
+}
+
+class MovementInput(
+    var forward : Double,
+    var strafing : Double
+)
