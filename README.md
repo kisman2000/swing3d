@@ -4,11 +4,6 @@
 
 ## With swing3d you can:
 
- - draw AABB
+ - draw bounding box
  - move camera
-
-## TODO:
-
- - draw pyramid
- - draw sphere
- - rotate camera
+ - rotate camera(WIP)

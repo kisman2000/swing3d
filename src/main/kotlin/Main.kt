@@ -1,3 +1,5 @@
+@file:Suppress("UNUSED_VARIABLE")
+
 import java.awt.Color
 import java.awt.Graphics
 import java.awt.event.*
@@ -25,7 +27,6 @@ val aspect = vec3(4, 4, 8)
 val camera = Camera(vec3(0, 0, 0), rotation(0, 0))
 
 val movementSpeed = vec3(1, 1, 1)
-val movementInput = MovementInput(1.0, 1.0)
 
 const val sensitivity = 0.5
 
@@ -43,22 +44,26 @@ fun render() {
         vec3(5, 0, 0),
         vec3(-5, 0, 0),
         null,
-        Color.BLACK
+        Color.RED
     )
 
     Box(
         vec3(0, 5, 0),
         vec3(0, -5, 0),
         null,
-        Color.BLACK
+        Color.GREEN
     )
 
     Box(
         vec3(0, 0, 5),
         vec3(0, 0, -5),
         null,
-        Color.BLACK
+        Color.BLUE
     )
+
+    cube(vec3(5, 0, 0), 1, null, Color.BLACK)
+    cube(vec3(0, 5, 0), 1, null, Color.BLACK)
+    cube(vec3(0, 0, 5), 1, null, Color.BLACK)
 
     cube(vec3(8 + 3, 8, 8 + 3), 1, Color.GREEN, Color.BLACK)
     cube(vec3(8, 8, 8), 1, Color.GREEN, Color.BLACK)
@@ -70,26 +75,10 @@ fun key(
     event : KeyEvent
 ) {
     when(event.keyCode) {
-        KEY_W -> {
-            val forward = (complex(0, 1) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.forward
-
-            camera.position.xz += forward
-        }
-        KEY_A -> {
-            val strafing = (complex(-1, 0) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.strafing
-
-            camera.position.xz += strafing
-        }
-        KEY_S -> {
-            val forward = (complex(0, -1) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.forward
-
-            camera.position.xz += forward
-        }
-        KEY_D -> {
-            val strafing = (complex(1, 0) * complex(cos(RAD * camera.rotation.yaw), sin(RAD * camera.rotation.yaw))).vector() * movementInput.strafing
-
-            camera.position.xz += strafing
-        }
+        KEY_W -> camera.position.z -= movementSpeed.z
+        KEY_A -> camera.position.x += movementSpeed.x
+        KEY_S -> camera.position.z += movementSpeed.z
+        KEY_D -> camera.position.x -= movementSpeed.x
         KEY_SPACE -> camera.position.y -= movementSpeed.y
         KEY_LSHIFT -> camera.position.y += movementSpeed.y
     }
@@ -139,9 +128,6 @@ fun main(
         ) {
             super.paintComponent(graphics)
 
-            graphics.color = Color.BLACK
-            graphics.drawString(camera.position.toString(), 5, 10)
-
             for(polygon in polygons) {
                 val x = IntArray(polygon.points.size)
                 val y = IntArray(polygon.points.size)
@@ -175,6 +161,10 @@ fun main(
                     line.end.position2d.y.toInt()
                 )
             }
+
+            graphics.color = Color.BLACK
+            graphics.drawString("Position: ${camera.position}", 5, 10)
+            graphics.drawString("Rotation: ${camera.rotation}", 5, 10 + graphics.fontMetrics.height)
         }
     }
 
@@ -387,7 +377,9 @@ class Vec2(
 class Rotation(
     var yaw : Double,
     var pitch : Double
-)
+) {
+    override fun toString() = "Rotation[$yaw;$pitch]"
+}
 
 class Camera(
     val position : Vec3,
@@ -472,8 +464,8 @@ class Polygon(
 }
 
 class Complex(
-    var real : Double,
-    var imag : Double
+    private var real : Double,
+    private var imag : Double
 ) {
     fun vector() = Vec2(real, imag)
 
@@ -484,8 +476,3 @@ class Complex(
         imag * complex.real + real * complex.imag
     )
 }
-
-class MovementInput(
-    var forward : Double,
-    var strafing : Double
-)
